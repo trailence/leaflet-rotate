@@ -2,7 +2,7 @@ import terser from "@rollup/plugin-terser";
 import resolve from '@rollup/plugin-node-resolve';
 import commonJS from '@rollup/plugin-commonjs';
 
-import plugin from '../package.json' assert { type: "json" };
+import plugin from '../package.json' with { type: "json" };
 
 let input = "src/index.js";
 let output = {
