@@ -1560,7 +1560,9 @@
                      * @see https://github.com/Leaflet/Leaflet/pull/3529
                      * @see https://github.com/fnicollet/Leaflet/commit/a77af51a6b10f308d1b9a16552091d1d0aee8834
                      */
-                    map.setBearing(this._startBearing - bearingDelta);
+                    var newBearing = this._startBearing - bearingDelta;
+                    map.setBearing(newBearing);
+                    map.fire('touch-rotate', {touchRotateBearing: newBearing < 0 ? newBearing + 360 : newBearing});
                 }
             }
 
