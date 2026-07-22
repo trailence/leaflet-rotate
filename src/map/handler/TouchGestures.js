@@ -70,6 +70,7 @@ L.Map.TouchGestures = L.Handler.extend({
         if (this.rotate) {
             this._startTheta = Math.atan(vector.x / vector.y);
             this._startBearing = map.getBearing();
+            this._rotateStarted = false;
             if (vector.y < 0) { this._startBearing += 180; }
             this._rotating = true;
         } else {
@@ -101,8 +102,8 @@ L.Map.TouchGestures = L.Handler.extend({
         if (this._rotating) {
             var theta = Math.atan(vector.x / vector.y);
             var bearingDelta = (theta - this._startTheta) * L.DomUtil.RAD_TO_DEG;
-            if (vector.y < 0) { bearingDelta += 180; }
-            if (Math.abs(bearingDelta) > this._map.options.touchRotateInertia) {
+            if (this._rotateStarted || Math.abs(bearingDelta) > this._map.options.touchRotateInertia) {
+                if (vector.y < 0) { bearingDelta += 180; }
                 /**
                  * @TODO the pivot should be the last touch point,
                  * but zoomAnimation manages to overwrite the rotate
@@ -115,6 +116,7 @@ L.Map.TouchGestures = L.Handler.extend({
                 map.setBearing(newBearing);
                 map.fire('touch-rotate', {touchRotateBearing: newBearing < 0 ? newBearing + 360 : newBearing});
                 hasRotated = true
+                this._rotateStarted = true;
             }
         }
 
@@ -166,6 +168,7 @@ L.Map.TouchGestures = L.Handler.extend({
 
         this._zooming = false;
         this._rotating = false;
+        this._rotateStarted = false;
         L.Util.cancelAnimFrame(this._animRequest);
         L.Util.cancelAnimFrame(this._animZoomRequest);
 
