@@ -212,22 +212,67 @@ L.Map.include({
      * 
      * @since leaflet-rotate (v0.1)
      */
-    setBearing: function(theta, offset = L.point(0, 0)) {
+    setBearing: function(theta, options) {
         if (!L.Browser.any3d || !this._rotate) { return; }
+        options ??= {};
 
-        var bearing = L.Util.wrapNum(theta, [0, 360]) * L.DomUtil.DEG_TO_RAD,
-            center = this._getPixelCenter().add(L.point(offset)),
-            oldPos = this._getRotatePanePos().rotateFrom(-this._bearing, center),
-            newPos = oldPos.rotateFrom(bearing, center);
+        var bearing = L.Util.wrapNum(theta, [0, 360]) * L.DomUtil.DEG_TO_RAD;
+        var center = this._getPixelCenter();
+        if (options.offset) center = center.add(offset);
+        var oldPos = this._getRotatePanePos().rotateFrom(-this._bearing, center);
+
+        this._pivot = center;
+        if (this._bearingAnim) {
+            L.Util.cancelAnimFrame(this._bearingAnim);
+            this._bearingAnim = undefined;
+        }
+        if (options.animate === true) {
+            this._startBearingAnim(oldPos, this._bearing, bearing, center, options.animationDuration || 300);
+            return;
+        }
 
         // CSS transform
         L.DomUtil.setPosition(this._rotatePane, oldPos, bearing, center);
 
-        this._pivot = center;
         this._bearing = bearing;
-        this._rotatePanePos = newPos;
+        this._rotatePanePos = oldPos.rotateFrom(bearing, center);
 
-        this.fire('rotate');
+        this.fire('rotate', {bearing, theta});
+    },
+
+    _startBearingAnim: function(oldPos, startBearing, targetBearing, center, duration) {
+        this.fire('rotate-anim-start');
+        const TAU = Math.PI * 2;
+        const diff = ((targetBearing - startBearing + Math.PI) % TAU + TAU) % TAU - Math.PI;
+        var startTime = Date.now();
+        var anim = function() {
+            var time = Date.now() - startTime;
+            if (time >= duration) {
+                this._endBearingAnim(oldPos, targetBearing, center);
+                return;
+            }
+            var progress = time / duration;
+            var easeInOut = -(Math.cos(Math.PI * progress) - 1) / 2;
+            var animated = startBearing + diff * easeInOut;
+            // Normalize to [0, 2π)
+            animated = ((animated % TAU) + TAU) % TAU;
+            L.DomUtil.setPosition(this._rotatePane, oldPos, animated, center);
+            this._bearing = animated;
+            this._rotatePanePos = oldPos.rotateFrom(animated, center);
+            this._bearingAnim = L.Util.requestAnimFrame(anim, this);
+            var theta = L.Util.wrapNum(animated * L.DomUtil.RAD_TO_DEG, [0, 360]);
+            this.fire('rotate', {bearing: animated, theta});
+        };
+        this._bearingAnim = L.Util.requestAnimFrame(anim, this);
+    },
+    _endBearingAnim: function(oldPos, bearing, center) {
+        this._bearingAnim = undefined;
+        L.DomUtil.setPosition(this._rotatePane, oldPos, bearing, center);
+        this._bearing = bearing;
+        this._rotatePanePos = oldPos.rotateFrom(bearing, center);
+        var theta = L.Util.wrapNum(bearing * L.DomUtil.RAD_TO_DEG, [0, 360]);
+        this.fire('rotate-anim-end', {bearing, theta});
+        this.fire('rotate', {bearing, theta});
     },
 
     /**
@@ -510,10 +555,10 @@ L.Map.include({
         // return L.DomUtil.getPosition(this._rotatePane) || new L.Point(0, 0);
     },
 
-    // _latLngToNewLayerPoint(latlng, zoom, center) {
-    //    const topLeft = this._getNewPixelOrigin(center, zoom);
-    //    return this.project(latlng, zoom)._subtract(topLeft);
-    //},
+    _latLngToNewLayerPoint(latlng, zoom, center) {
+        const topLeft = this._getNewPixelOrigin(center, zoom);
+        return this.project(latlng, zoom)._subtract(topLeft);
+    },
 
     _getNewPixelOrigin: function(center, zoom) {
         if (!this._rotate) {

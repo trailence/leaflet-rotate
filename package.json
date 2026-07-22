@@ -12,7 +12,8 @@
 		"watch": "rollup -c build/rollup.config.js --watch",
 		"dev": "npm-run-all --print-label --parallel serve watch",
 		"serve": "http-server",
-		"version": "npm run build && git add -A dist"
+		"version": "npm run build && git add -A dist",
+		"update_trailence": "npm run build && cd dist && cpy ./leaflet-rotate.js ../../trailence-front/src/assets --rename=leaflet-rotate.1.js"
 	},
 	"repository": {
 		"type": "git",
