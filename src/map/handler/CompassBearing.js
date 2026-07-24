@@ -63,6 +63,8 @@ L.Map.CompassBearing = L.Handler.extend({
         // Older browsers
         if (!e.absolute && 'undefined' !== typeof window.orientation) {
             deviceOrientation = window.orientation;
+        } else if (window.screen?.orientation) {
+            deviceOrientation = window.screen.orientation.angle ?? 0;
         }
 
         this._map.setBearing(angle - deviceOrientation);
