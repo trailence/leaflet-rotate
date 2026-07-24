@@ -526,7 +526,7 @@
          */
         getEvents: function() {
             var events = gridLayerProto.getEvents.apply(this, arguments);
-            if (this._map._rotate && !this.options.updateWhenIdle) {
+            if (this._map._rotate /*&& !this.options.updateWhenIdle*/) {
                 if (!this._onRotate) {
                     this._onRotate = L.Util.throttle(this._onMoveEnd, this.options.updateInterval, this);
                 }
@@ -1421,6 +1421,8 @@
             // Older browsers
             if (!e.absolute && 'undefined' !== typeof window.orientation) {
                 deviceOrientation = window.orientation;
+            } else if (window.screen?.orientation) {
+                deviceOrientation = window.screen.orientation.angle ?? 0;
             }
 
             this._map.setBearing(angle - deviceOrientation);

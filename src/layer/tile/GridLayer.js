@@ -16,7 +16,7 @@ L.GridLayer.include({
      */
     getEvents: function() {
         var events = gridLayerProto.getEvents.apply(this, arguments);
-        if (this._map._rotate && !this.options.updateWhenIdle) {
+        if (this._map._rotate /*&& !this.options.updateWhenIdle*/) {
             if (!this._onRotate) {
                 this._onRotate = L.Util.throttle(this._onMoveEnd, this.options.updateInterval, this);
             }
