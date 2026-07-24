@@ -97,7 +97,7 @@ L.Map.TouchGestures = L.Handler.extend({
             vector = p1.subtract(p2),
             scale = p1.distanceTo(p2) / this._startDist,
             delta;
-        var hasRotated, hasZoomed
+        var hasChanged = false, hasRotated = false;
 
         if (this._rotating) {
             var theta = Math.atan(vector.x / vector.y);
@@ -113,9 +113,9 @@ L.Map.TouchGestures = L.Handler.extend({
                  * @see https://github.com/fnicollet/Leaflet/commit/a77af51a6b10f308d1b9a16552091d1d0aee8834
                  */
                 var newBearing = this._startBearing - bearingDelta;
-                map.setBearing(newBearing);
-                map.fire('touch-rotate', {touchRotateBearing: newBearing < 0 ? newBearing + 360 : newBearing});
-                hasRotated = true
+                map.setBearing(newBearing, {animate: false});
+                hasChanged = true;
+                hasRotated = true;
                 this._rotateStarted = true;
             }
         }
@@ -129,32 +129,34 @@ L.Map.TouchGestures = L.Handler.extend({
             }
             if (map.options.touchZoom === 'center') {
                 this._center = this._startLatLng;
-                if (scale === 1) { return; }
+                if (scale !== 1)
+                  hasChanged = true;
             } else {
                 // Get delta from pinch to center, so centerLatLng is delta applied to initial pinchLatLng
                 delta = p1._add(p2)._divideBy(2)._subtract(this._centerPoint);
-                if (scale === 1 && delta.x === 0 && delta.y === 0) { return; }
 
-                var alpha = -map.getBearing() * L.DomUtil.DEG_TO_RAD;
-
-                this._center = map.unproject(map.project(this._pinchStartLatLng).subtract(delta.rotate(alpha)));
+                if (scale !== 1 || delta.x !== 0 || delta.y !== 0) {
+                  var alpha = -map.getBearing() * L.DomUtil.DEG_TO_RAD;
+                  this._center = map.unproject(map.project(this._pinchStartLatLng).subtract(delta.rotate(alpha)));
+                  hasChanged = true;
+                }
             }
-            hasZoomed = true
         }
+
+        if (!hasChanged) return;
 
         if (!this._moved) {
             map._moveStart(true, false);
             this._moved = true;
         }
-        L.Util.cancelAnimFrame(this._animRequest);
-        if (this._animZoomRequest) L.Util.cancelAnimFrame(this._animZoomRequest);
-        var moveFn = map._move.bind(map, this._center, this._zoom, { pinch: true, round: false });
-        this._animRequest = L.Util.requestAnimFrame(moveFn, this, true);
-        if (hasZoomed) {
-            var zoomFn = map._animateZoomNoDelay.bind(map, this._center, this._map._limitZoom(this._zoom), true);
-            this._animZoomRequest = L.Util.requestAnimFrame(zoomFn, this, true);
-        } else {
-            this._animZoomRequest = null
+        if (hasChanged) {
+          L.Util.cancelAnimFrame(this._animRequest);
+          var moveFn = function() {
+            map._move(this._center, this._zoom, { pinch: true, round: false });
+            if (hasRotated)
+              map.fire('touchrotate', {touchRotateBearing: newBearing < 0 ? newBearing + 360 : newBearing});
+          }
+          this._animRequest = L.Util.requestAnimFrame(moveFn, this, true);
         }
         
         L.DomEvent.preventDefault(e);
@@ -163,6 +165,7 @@ L.Map.TouchGestures = L.Handler.extend({
     _onTouchEnd: function() {
         if (!this._moved || !(this._zooming || this._rotating)) {
             this._zooming = false;
+            this._rotating = false;
             return;
         }
 

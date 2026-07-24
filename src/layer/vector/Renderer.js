@@ -61,10 +61,9 @@ L.Renderer.include({
             offset = this._map._latLngToNewLayerPoint(this._topLeft, zoom, center);
 
         L.DomUtil.setTransform(this._container, offset, scale);
-        
     },
 
-    // getEvents() {
+    getEvents() {
     //     const events = {
     //         viewreset: this._reset,
     //         zoom: this._onZoom,
@@ -74,8 +73,12 @@ L.Renderer.include({
     //     if (this._zoomAnimated) {
     //         events.zoomanim = this._onAnimZoom;
     //     }
-    //     return events;
-    // },
+        const events = rendererProto.getEvents.apply(this, arguments);
+        if (this._map._rotate) {
+            events.touchrotate = this._onZoomEnd;
+        }
+        return events;
+    },
 
     // _onAnimZoom(ev) {
     //     this._updateTransform(ev.center, ev.zoom);
@@ -83,7 +86,7 @@ L.Renderer.include({
 
 	// _onZoom() {
     //     this._updateTransform(this._map.getCenter(), this._map.getZoom());
-	// },
+    // },
 
     // _onZoomEnd() {
     //     for (const id in this._layers) {
